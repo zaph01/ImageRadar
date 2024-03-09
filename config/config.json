@@ -1,0 +1,45 @@
+{
+    "name":"ImageRadar",
+    "general" :{
+        "seed" : 3
+    },
+    
+    "dataset": {
+        "root_dir" : "D:/ImageRadar/RADIal/radar_PCL"
+    },
+
+    "learning_rate":{
+        "step_size": 1,
+        "gamma": 0.9
+    },
+
+    "optimizer": { 
+        "lr": 0.0001
+    },
+
+    "num_epochs": 10,
+
+    "dataloader": {
+        "train_set":{
+            "batch_size": 4
+        },
+
+        "val_set":{
+            "batch_size": 4
+        },
+        
+        "test_set": {
+            "batch_size": 1
+        },
+    "output": {
+        "dir": "../"
+        }
+
+    }
+    
+    
+    
+    
+
+    
+}
