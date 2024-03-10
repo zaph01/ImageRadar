@@ -51,8 +51,10 @@ def main(config, resume):
 
     #load dataset
 
-
-
+    ######################
+    #dataset = 
+    ######################
+    #train_loader, val_loader, test_loader = CreateDataLoaders(dataset,config['dataloader'],config['seed']
     #create model
     net = ImRadNet()
     
@@ -70,7 +72,7 @@ def main(config, resume):
 
     # Start Training
     start_epoch = 0
-
+    
     if resume:
         print('===========  Resume training  ==================:')
         dict = torch.load(resume)
@@ -85,6 +87,23 @@ def main(config, resume):
 
     for epoch in range(start_epoch,num_epochs):
         net.train()
+        #########
+        train_loader = 0
+        #########
+
+        for i,data in range(train_loader):
+            inputs = data[0].to('cuda').float()
+
+            #reset gradient
+            optimizer.zero_grad()
+             
+             
+             # forward pass, enable to track our gradient
+            with torch.set_grad_enabled(True):
+                outputs = net(inputs)
         
+
+
+
 
 
