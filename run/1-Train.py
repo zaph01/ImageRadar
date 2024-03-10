@@ -58,4 +58,5 @@ def main(config, resume):
 
     #create model
     net = ImRadNet()
+    
 
