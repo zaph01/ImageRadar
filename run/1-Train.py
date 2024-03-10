@@ -47,11 +47,8 @@ def main(config, resume):
         else:
             device = torch.device("cpu")
         return device
-
-    #set device
     device = get_device()
 
-    
     #load dataset
 
 
@@ -59,4 +56,35 @@ def main(config, resume):
     #create model
     net = ImRadNet()
     
+    #load model to selected device
+    net.to(device)
+
+    # Optimizer
+    lr = float(config['optimizer']['lr'])
+    step_size = int(config['learning_rate']['step_size'])
+    gamma = float(config['learning_rate']['gamma'])
+    optimizer = optim.Adam(filter(lambda p: p.requires_grad, net.parameters()), lr=lr)
+    scheduler = lr_scheduler.StepLR(optimizer, step_size=step_size, gamma=gamma)
+
+    num_epochs=int(config['num_epochs'])
+
+    # Start Training
+    start_epoch = 0
+
+    if resume:
+        print('===========  Resume training  ==================:')
+        dict = torch.load(resume)
+        net.load_state_dict(dict['net_state_dict'])
+        optimizer.load_state_dict(dict['optimizer'])
+        scheduler.load_state_dict(dict['scheduler'])
+        startEpoch = dict['epoch']+1
+        history = dict['history']
+        global_step = dict['global_step']
+
+        print('       ... Start at epoch:',startEpoch)
+
+    for epoch in range(start_epoch,num_epochs):
+        net.train()
+        
+
 
