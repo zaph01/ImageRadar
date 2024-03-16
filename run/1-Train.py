@@ -3,14 +3,15 @@ import torch.nn as nn
 import torch.nn.functional as f
 import json
 import torch.optim as optim
+from loss import pixor_loss
 import numpy as np
 import random
+#from torch.utils.tensorboard import SummaryWriter as SW
 from pathlib import Path
 from datetime import datetime
 from torch.optim import lr_scheduler
 from model.ImRadNet import ImRadNet
 from dataset.dataloader import CreateDataLoaders
-
 
 def main(config, resume):      
     #input args: 
@@ -46,12 +47,18 @@ def main(config, resume):
         return device
     device = get_device()
 
-    #load dataset
 
+    # Initiate Tensorboad for visualization of processes 
+    #log_write = SW(output_folder)
+
+    #load dataset
+    #########
+    train_loader = 0
+    #########   
     ######################
     #dataset = 
     ######################
-    #train_loader, val_loader, test_loader = CreateDataLoaders(dataset,config['dataloader'],config['seed']
+    #train_loader, test_loader = CreateDataLoaders(dataset,config['dataloader'],config['seed']
     #create model
     net = ImRadNet()
     
@@ -70,6 +77,8 @@ def main(config, resume):
     # Start Training
     start_epoch = 0
     
+    freespace_loss = nn.BCEWithLogitsLoss(reduction='mean')     ########################   
+
     if resume:
         print('===========  Resume training  ==================:')
         dict = torch.load(resume)
@@ -84,23 +93,81 @@ def main(config, resume):
 
     for epoch in range(start_epoch,num_epochs):
         net.train()
-        #########
-        train_loader = 0
-        #########
+        running_loss = 0.0  ########################
+        print('Epoch #',epoch)
 
         for i,data in range(train_loader):
-            inputs = data[0].to('cuda').float()
+            inputs = data[0].to(device).float()
+            label_map = data[1].to(device).float()
+            
+            if(config['model']['SegmentationHead']=='True'):
+                seg_map_label = data[2].to(device).double()
 
-            #reset gradient
+            # reset the gradient
             optimizer.zero_grad()
-             
-             
-             # forward pass, enable to track our gradient
+            
+            # forward pass, enable to track our gradient
             with torch.set_grad_enabled(True):
                 outputs = net(inputs)
+
+            # calculate losses
+            classif_loss, reg_loss = pixor_loss(outputs['Detection'], label_map,config['losses'])           
+               
+            prediction = outputs['Segmentation'].contiguous().flatten()
+            label = seg_map_label.contiguous().flatten()        
+            loss_seg = freespace_loss(prediction, label)
+            loss_seg *= inputs.size(0)
+
+            classif_loss *= config['losses']['weight'][0]
+            reg_loss *= config['losses']['weight'][1]
+            loss_seg *=config['losses']['weight'][2]
+
+            ## calculate total loss
+            loss = classif_loss + reg_loss + loss_seg
+
+            '''
+            writer.add_scalar('Loss/train', loss.item(), global_step)
+            writer.add_scalar('Loss/train_clc', classif_loss.item(), global_step)
+            writer.add_scalar('Loss/train_reg', reg_loss.item(), global_step)
+            writer.add_scalar('Loss/train_freespace', loss_seg.item(), global_step)
+            '''
+
+            # backpropagation
+            loss.backward()
+            optimizer.step()
+
+            # statistics
+            running_loss += loss.item() * inputs.size(0) 
+            
+            global_step += 1
+
+
+        scheduler.step()
+
+
+        history['train_loss'].append(running_loss / len(train_loader.dataset))
+        history['lr'].append(scheduler.get_last_lr()[0])
+        
+        ###################################################
+        ## validation phase was cut out due to simplicity##
+        ###################################################
+
+          
+        print('')
+
+        
         
 
+if __name__=='__main__':
+    # PARSE THE ARGS
+    parser = argparse.ArgumentParser(description='FFTRadNet Training')
+    parser.add_argument('-c', '--config', default='config.json',type=str,
+                        help='Path to the config file (default: config.json)')
+    parser.add_argument('-r', '--resume', default=None, type=str,
+                        help='Path to the .pth model checkpoint to resume training')
 
+    args = parser.parse_args()
 
-
-
+    config = json.load(open(args.config))
+    
+    main(config, args.resume)
