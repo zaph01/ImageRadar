@@ -6,6 +6,7 @@ import torch.optim as optim
 from loss import pixor_loss
 import numpy as np
 import random
+import argparse
 #from torch.utils.tensorboard import SummaryWriter as SW
 from pathlib import Path
 from datetime import datetime
@@ -155,8 +156,7 @@ def main(config, resume):
           
         print('')
 
-        
-        
+
 
 if __name__=='__main__':
     # PARSE THE ARGS
