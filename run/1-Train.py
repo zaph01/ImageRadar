@@ -12,9 +12,6 @@ from model.ImRadNet import ImRadNet
 from dataset.dataloader import CreateDataLoaders
 
 
-
-
-
 def main(config, resume):      
     #input args: 
         #config = config.json
