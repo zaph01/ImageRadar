@@ -154,6 +154,12 @@ def main(config, resume):
         ###################################################
 
           
+
+        torch.save({
+            'model_state_dict':net.state_dict(),
+            'optimizer_state_dict':optimizer.state_dict(),
+            
+        },'ImRad.pth')
         print('')
 
 
