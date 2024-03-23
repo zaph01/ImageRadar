@@ -18,6 +18,7 @@ from datetime import datetime
 from torch.optim import lr_scheduler
 from model.ImRadNet import ImRadNet
 from dataset.dataloader import CreateDataLoaders
+import dataset.dataloader_pcl as data_pcl
 
 def main(config, resume):      
     #input args: 
@@ -59,7 +60,8 @@ def main(config, resume):
 
     #load dataset
     #########
-    train_loader = 0
+    train_loader = data_pcl.train_loader
+    test_loader = data_pcl.test_loader
     #########   
     ######################
     #dataset = 
