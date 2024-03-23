@@ -1,20 +1,31 @@
+############################### IMPORTANT INFORMATION ###################################
+# This code contains functions from RADIal-Repository by Valeo.ai                       #  
+# For further information go visit https://github.com/valeoai/RADIal?tab=readme-ov-file #
+#########################################################################################
+import os
+import sys
+sys.path.append('C:/Users/mail/OneDrive/Dokumente/ImRad')
+
 import torch
 import torch.nn as nn
 import torch.nn.functional as f
 import json
 import torch.optim as optim
-from loss import pixor_loss
 import numpy as np
 import random
 import argparse
-#from torch.utils.tensorboard import SummaryWriter as SW
+from torch.utils.tensorboard import SummaryWriter as SW
+from dataset.dataset import RADIal
 from pathlib import Path
 from datetime import datetime
 from torch.optim import lr_scheduler
 from model.ImRadNet import ImRadNet
 from dataset.dataloader import CreateDataLoaders
+from dataset.dataloader import ImRad_PCL
+from loss.loss_function import pixor_loss
+import dataset.dataloader as data_pcl
 
-def main(config, resume):      
+def main(config):      
     #input args: 
         #config = config.json
         #resume = "Speicherstand" des models -> resume training after going into validation-phase
@@ -27,13 +38,13 @@ def main(config, resume):
 
     #protocoll and name the run
     date = datetime.now()
-    run_name = config['name'] + '_' + date.strftime()
+    run_name = config['name'] + '_' + date.strftime(format='str')
     print(run_name)
 
     #create output directory
     #importet from the project FFTRadNet by Valeo #
     #############################################################################################################################
-    output_folder = Path(config['output']['dir'])
+    output_folder = Path("C:/Users/mail/OneDrive/Dokumente/ImRad/output")
     output_folder.mkdir(parents=True, exist_ok=True)
     (output_folder / run_name).mkdir(parents=True, exist_ok=True)
     #############################################################################################################################
@@ -54,11 +65,12 @@ def main(config, resume):
 
     #load dataset
     #########
-    train_loader = 0
+    dataset = ImRad_PCL(root_dir = 'C:/Users/mail/OneDrive/Dokumente/ImRad/radar_PCL')
+    #df, box_labels, dataset_RPC = data_pcl.CreateDataset()
     #########   
     ######################
-    #dataset = 
     ######################
+    train_loader,test_loader = data_pcl.CreateDataLoaders(dataset)
     #train_loader, test_loader = CreateDataLoaders(dataset,config['dataloader'],config['seed']
     #create model
     net = ImRadNet()
@@ -67,19 +79,20 @@ def main(config, resume):
     net.to(device)
 
     # Optimizer
-    lr = float(config['optimizer']['lr'])
-    step_size = int(config['learning_rate']['step_size'])
-    gamma = float(config['learning_rate']['gamma'])
+    lr = float(config['optimizer']['lr'])                           # define initial learning rate of first iteration
+    step_size = int(config['learning_rate']['step_size'])           # defines how many epochs should be run without changing the learning rate
+    gamma = float(config['learning_rate']['gamma'])                 # after the number of epochs defined in step_size, the learning rate is multiplied (in this case reduced) with the factor gamma
     optimizer = optim.Adam(filter(lambda p: p.requires_grad, net.parameters()), lr=lr)
     scheduler = lr_scheduler.StepLR(optimizer, step_size=step_size, gamma=gamma)
 
-    num_epochs=int(config['num_epochs'])
+    num_epochs=int(config['num_epochs'])    # number of total epochs defined in config
 
     # Start Training
     start_epoch = 0
     
     freespace_loss = nn.BCEWithLogitsLoss(reduction='mean')     ########################   
-
+    
+    '''
     if resume:
         print('===========  Resume training  ==================:')
         dict = torch.load(resume)
@@ -91,13 +104,13 @@ def main(config, resume):
         global_step = dict['global_step']
 
         print('       ... Start at epoch:',startEpoch)
-
+    '''
     for epoch in range(start_epoch,num_epochs):
         net.train()
         running_loss = 0.0  ########################
         print('Epoch #',epoch)
 
-        for i,data in range(train_loader):
+        for data in enumerate(train_loader):
             inputs = data[0].to(device).float()
             label_map = data[1].to(device).float()
             
@@ -145,15 +158,13 @@ def main(config, resume):
 
         scheduler.step()
 
-
+        '''
         history['train_loss'].append(running_loss / len(train_loader.dataset))
         history['lr'].append(scheduler.get_last_lr()[0])
-        
+        '''
         ###################################################
-        ## validation phase was cut out due to simplicity##
-        ###################################################
-
-          
+        # validation phase was cut out due to simplicity  #
+        ###################################################  
 
         torch.save({
             'model_state_dict':net.state_dict(),
@@ -166,8 +177,8 @@ def main(config, resume):
 
 if __name__=='__main__':
     # PARSE THE ARGS
-    parser = argparse.ArgumentParser(description='FFTRadNet Training')
-    parser.add_argument('-c', '--config', default='config.json',type=str,
+    parser = argparse.ArgumentParser(description='ImRadNet Training')
+    parser.add_argument('-c', '--config', default='config/config.json',type=str,
                         help='Path to the config file (default: config.json)')
     parser.add_argument('-r', '--resume', default=None, type=str,
                         help='Path to the .pth model checkpoint to resume training')
@@ -176,4 +187,4 @@ if __name__=='__main__':
 
     config = json.load(open(args.config))
     
-    main(config, args.resume)
+    main(config)

@@ -16,6 +16,7 @@ from model.ImRadNet import ImRadNet
 from dataset.dataloader import CreateDataLoaders
 import cv2
 from utils.util import DisplayHMI
+import dataset.dataloader as data_pcl
 
 def main(config, saved_model = 'ImRad.pth'):
     
@@ -31,14 +32,16 @@ def main(config, saved_model = 'ImRad.pth'):
 
     #load dataset
     #########
-    test_loader = 0
+    test_loader = data_pcl.test_loader
     #########   
     ######################
+    ''''
     dataset = RADIal(root_dir = config['dataset']['root_dir'],
                         statistics= config['dataset']['statistics'],
                         encoder=enc.encode,
                         difficult=True)
     ######################
+    '''
     #train_loader, test_loader = CreateDataLoaders(dataset,config['dataloader'],config['seed']
      
     #create model
@@ -55,7 +58,7 @@ def main(config, saved_model = 'ImRad.pth'):
     net.eval()
 
     # start testing-loop
-    for data in dataset:
+    for data in test_loader:
     # data is composed of [radar_FFT, segmap,out_label,box_labels,image]
         inputs = torch.tensor(data[0]).permute(2,0,1).to('cuda').float().unsqueeze(0)
 
