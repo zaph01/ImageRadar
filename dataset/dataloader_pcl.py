@@ -56,7 +56,7 @@ for i in range(3000):
     # radar_A_deg	radar_D_mps	radar_P_db
     box_labels_one = box_labels_one[:,10:13].astype(np.float32)
     box_labels.append(box_labels_one)  # Ergebnisse zur Liste hinzufügen
-    RPC_filename = os.path.join(base_dir,'radar_PCL',"pcl_{:06d}.npy".format(sample_id))
+    RPC_filename = os.path.join(base_dir,"pcl_{:06d}.npy".format(sample_id))
     # range,azimuth,elevation,power,doppler,x,y,z,v  ---> [0,1,4]
     dataset_RPC.append(np.load(RPC_filename,allow_pickle=True)[[0,1,4],:])
     

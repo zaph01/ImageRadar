@@ -29,6 +29,7 @@ def conv3x3_RAD(input, output, stride = 1, bias = False):
 
 #Nomalize Input to equal dimensions
  #Dimensions of input: batch_size = 4, Channels = 3,
+'''
 class DataNorm(nn.utils.dataset):
     def __init__(self,input_data, mode = 'bilinear',size = (1028)):     # Size variabel, 1028 nur als vorläufiger Platzhalter
         super(DataNorm,self).__init__()
@@ -48,7 +49,7 @@ class DataNorm(nn.utils.dataset):
             os.abort
         
         return tensor_scaled
-
+'''
 
 
 
