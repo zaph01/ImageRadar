@@ -1,77 +1,193 @@
-# Loader splits dataset in 3 parts: Train, validation and testing
+#!/usr/bin/env python
+# coding: utf-8
+
+# # Datenloader-File
+
+# In[2]:
+
+
 import numpy as np
 from torch.utils.data import Dataset, DataLoader, Subset
 import torch
+import json
+import os
+import pandas as pd
 
-# define dataset for valdaion and testing
-Sequences = {'Validation':['RECORD@2020-11-22_12.49.56','RECORD@2020-11-22_12.11.49','RECORD@2020-11-22_12.28.47','RECORD@2020-11-21_14.25.06'],
-            'Test':['RECORD@2020-11-22_12.45.05','RECORD@2020-11-22_12.25.47','RECORD@2020-11-22_12.03.47','RECORD@2020-11-22_12.54.38']}
-# nach beispiel: ['RECORD@2020-11-22_12.49.56','RECORD@2020-11-22_12.11.49','RECORD@2020-11-22_12.28.47','RECORD@2020-11-21_14.25.06']
+from torchvision.transforms import Resize,CenterCrop
 
-# define function to create batches
-def RADIal_collate(batch):
-    images = []                 # Platzhalter definieren    # create empty arrays
-    FFTs = []
-    laser_pcs = []
+
+#  Daten Laden in ein Dataset (pandas)
+
+# In[3]:
+
+'''
+def CreateDataset():
+    base_dir = 'C:/Users/mail/OneDrive/Dokumente/ImRad/radar_PCL'
+    labels = pd.read_csv(os.path.join(base_dir,'labels.csv'))
+    labels_np = labels.to_numpy()
+
+    # um nur einfache Werte difficult = 1 anzuzeigen
+    ids_filters=[]
+    ids = np.where(labels_np[:, -1] == 0)[0]
+    ids_filters.append(ids)
+    ids_filters = np.unique(np.concatenate(ids_filters))
+    labels_np = labels_np[ids_filters]
+
+    # um nur noch eindeutige numSamples in 1. Spalte zu haben 
+    unique_ids = np.unique(labels_np[:,0])
+    label_dict = {}
+    for i,ids in enumerate(unique_ids):
+        sample_ids = np.where(labels_np[:,0]==ids)[0]
+        label_dict[ids]=sample_ids
+    sample_keys = list(label_dict.keys())
+
+    len_dict = len(label_dict)
+
+    dataset_RPC = []
+    box_labels = []
+    for i in range(3000):
+        sample_id = sample_keys[i] 
+        # From the sample id, retrieve all the labels ids
+        entries_indexes = label_dict[sample_id]
+        # Get the objects labels
+        box_labels_one = labels_np[entries_indexes]
+
+        # Labels contains following parameters:
+        # numSample	x1_pix	y1_pix	x2_pix	y2_pix	laser_X_m	laser_Y_m	laser_Z_m	radar_X_m	radar_Y_m	radar_R_m
+        # radar_A_deg	radar_D_mps	radar_P_db
+        box_labels_one = box_labels_one[:,10:13].astype(np.float32)
+        box_labels.append(box_labels_one)  # Ergebnisse zur Liste hinzufügen
+        RPC_filename = os.path.join(base_dir,"pcl_{:06d}.npy".format(sample_id))
+        # range,azimuth,elevation,power,doppler,x,y,z,v  ---> [0,1,4]
+        dataset_RPC.append(np.load(RPC_filename,allow_pickle=True)[[0,1,4],:])
+        
+    df = pd.DataFrame({'Data_RPC': dataset_RPC, 'Labels': box_labels})
+    print("dataframe loaded")
+    print(type(df))
+    return df, box_labels, dataset_RPC
+'''
+
+class ImRad_PCL(Dataset):
+    def __init__(self, root_dir):
+        self.root_dir = root_dir
+        self.labels = pd.read_csv(os.path.join(self.root_dir,'labels.csv'))
+        self.labels_np = self.labels.to_numpy()
+
+        # um nur einfache Werte difficult = 1 anzuzeigen
+        ids_filters=[]
+        ids = np.where(self.labels_np[:, -1] == 0)[0]
+        ids_filters.append(ids)
+        ids_filters = np.unique(np.concatenate(ids_filters))
+        self.labels_np = self.labels_np[ids_filters]
+        self.unique_ids = np.unique(self.labels_np[:,0])
+        self.label_dict = {}
+        for i,ids in enumerate(self.unique_ids):
+            sample_ids = np.where(self.labels_np[:,0]==ids)[0]
+            self.label_dict[ids]=sample_ids
+        self.sample_keys = list(self.label_dict.keys())
+    
+    def __len__(self):
+        return len(self.label_dict)
+
+    def __getitem__(self,index):
+        dataset_RPC = []
+        box_labels = []
+        sample_id = self.sample_keys[index] 
+        # From the sample id, retrieve all the labels ids
+        entries_indexes = self.label_dict[sample_id]
+        # Get the objects labels
+        box_labels = self.labels_np[entries_indexes]
+
+        # Labels contains following parameters:
+        # numSample	x1_pix	y1_pix	x2_pix	y2_pix	laser_X_m	laser_Y_m	laser_Z_m	radar_X_m	radar_Y_m	radar_R_m
+        # radar_A_deg	radar_D_mps	radar_P_db
+        box_labels = box_labels[:,10:13].astype(np.float32)
+        #box_labels.append(box_labels)  # Ergebnisse zur Liste hinzufügen
+        RPC_filename = os.path.join(self.root_dir,"pcl_{:06d}.npy".format(sample_id))
+        # range,azimuth,elevation,power,doppler,x,y,z,v  ---> [0,1,4]
+        dataset_RPC.append(np.load(RPC_filename,allow_pickle=True)[[0,1,4],:])
+            
+        #df = pd.DataFrame({'Data_RPC': dataset_RPC, 'Labels': box_labels})
+        #print("dataframe loaded")
+        #print(type(df))
+        return dataset_RPC, box_labels
+    # um nur noch eindeutige numSamples in 1. Spalte zu haben 
+   
+# Klasse zum erstellen von Batch 
+
+# In[4]:
+
+
+def ImRad_collate(batch):
+    #df, box_labels, dataset_RPC = CreateDataset()
+    #dataset_RPC, box_labels = ImRad_PCL(root_dir='C:/Users/mail/OneDrive/Dokumente/ImRad/radar_PCL')
     radar_pcs = []
-    segmaps = []
     labels = []
 
-    for image, radar_FFT, radar_pc, laser_pc,segmap,box_labels in batch:
-        labels.append(torch.from_numpy(box_labels))           # torch.from_numpy  -> gibt einen Tensor zurück (das box_labels-array
-                                                              # und der entstandene Tensor teilen sich einen Speicher, größe des Tensors lässt sich nicht ändern)
-        images.append(torch.tensor(image))                    # torch.tensor -> kopiert Daten
-        FFTs.append(torch.tensor(radar_FFT).permute(2,0,1))   # torch.permute  -> gibt Teile des Tensor wieder (Postionen werden angegeben)
-        segmaps.append(torch.tensor(segmap))
-        laser_pcs.append(torch.from_numpy(laser_pc))
-        radar_pcs.append(torch.from_numpy(radar_pc))
+    for dataset_RPC, box_labels in batch:
+        labels.append(torch.from_numpy(box_labels))           # torch.from_numpy  -> gibt einen Tensor zurück (das box_labels array und der
+                                                              # und der entstandene Tensor teilen sich einen Speicher, größe des Tensors lässt sich ncicht ändern)
+        radar_pcs.append(torch.from_numpy(dataset_RPC))
         
-    return torch.stack(images), torch.stack(FFTs), torch.stack(segmaps),laser_pcs,radar_pcs,labels      # torch.stack  -> verkettet Tensoren entlang einer neuen Dimension 
+    return radar_pcs,labels            # torch.stack  -> verkettet Tensoren entlang einer neuen Dimension 
 
-# create data loaders
-def CreateDataLoaders(dataset,batch_size=4,num_workers=2,seed=0):   # batch_size -> Datenloader lädt Daten in Batches mit angegebener Größe
-                                                                    # num_workers -> Anzahl Prozesse, die zum Laden der Daten verwendet werden (Ladegeschwindigkeit kann erhöht werden)
-                                                                    # seed -> wichtig für Reproduzierbarkeit der Ergebnisse 
-    dict_index_to_keys = {s:i for i,s in enumerate(dataset.sample_keys)} # jedem dataset.sample_keys wird ein index zugeordnet 
 
-    Val_indexes = []                                           # Daten werden aufgeteilt 
-    for seq in Sequences['Validation']:                        # durchlaufen der Daten 
-        idx = np.where(dataset.labels[:,14]==seq)[0]
-        Val_indexes.append(dataset.labels[idx,0])              # index der Sequenz wird gefunden und Liste hinzugefügt 
-    Val_indexes = np.unique(np.concatenate(Val_indexes))       # dopppelte Sequenzen werden rausgenommen 
+# Klasse zur Loader Erstellung 
 
-    Test_indexes = []
-    for seq in Sequences['Test']:
-        idx = np.where(dataset.labels[:,14]==seq)[0]
-        Test_indexes.append(dataset.labels[idx,0])
-    Test_indexes = np.unique(np.concatenate(Test_indexes))
+# In[5]:
 
-    val_ids = [dict_index_to_keys[k] for k in Val_indexes]     # entsprechende Sequenz-IDs werden aus dem Dataset ausgewählt
-    test_ids = [dict_index_to_keys[k] for k in Test_indexes]
-    train_ids = np.setdiff1d(np.arange(len(dataset)),np.concatenate([val_ids,test_ids]))   # np.setdiff1d -> findet Unterschiede zwischem den beiden arrays
-                                                                                           # gibt die werte von array 1 an, die nicht in array 2 vorkommen 
-    train_dataset = Subset(dataset,train_ids)                  
-    val_dataset = Subset(dataset,val_ids)  
-    test_dataset = Subset(dataset,test_ids)
 
-    #Create the data_loaders (to load, merge and transform the data in batches before feeding it into the model)
+def CreateDataLoaders(dataset,batch_size=4,shuffle=True,num_workers=2,seed=3):   # batch_size -> Datenloader lädt Daten in Batches mit angegebener Größe
+    
+    #dataset = ImRad_PCL(root_dir='C:/Users/mail/OneDrive/Dokumente/ImRad/radar_PCL')       # num_workers -> Anzahl Prozesse, die zum Laden der Daten verwendet werden (Ladegescheindigkeit kann erhöht werden)
+    data = []
+    box_labels = []
+    for i in range(dataset.__len__()):
+        data,box_labels = dataset.__getitem__(i)  
+                                                                      # seed -> wichtig für Reproduzierbarkeit der Ergebnisse                                                               # shuffle -> zum Durchmische des datasets
+    print(type(box_labels))
+    #dict_index_to_keys = {s:i for i,s in enumerate(sample_keys)}    # jedem dataset.sample_kexs wird ein index zugeordnet 
+    
+    Test_indexes = []                                 # Daten werden aufgeteilt 
+    for i in range(500):                              # durchlaufen der Daten 
+        Test_indexes.append(box_labels[i])            # index der Sequenz wird gefunden und Liste hinzugefügt 
+   
+    Train_indexes = []
+    for i in range(500, 2500):
+        Train_indexes.append(box_labels[i])
+
+                                                                                         # gibt die werte von array 1 an, die nicht in array 2 vorkommen 
+    train_dataset = Subset(dataset,Train_indexes)                  
+    test_dataset = Subset(dataset,Test_indexes)
+
+    # Erstellen der data_loaders (um die Daten in Batches zu laden, zu mischen und zu transformieren, bevor sie in das Modell eingespeist werden)
     train_loader = DataLoader(train_dataset, 
                             batch_size=batch_size, 
                             shuffle=True,
                             num_workers=num_workers,
                             pin_memory=True,
-                            collate_fn=RADIal_collate)
-    val_loader =  DataLoader(val_dataset, 
-                            batch_size=batch_size, 
-                            shuffle=False,
-                            num_workers=num_workers,
-                            pin_memory=True,
-                            collate_fn=RADIal_collate)
+                            collate_fn=ImRad_collate)
+
     test_loader =  DataLoader(test_dataset, 
                             batch_size=batch_size, 
                             shuffle=False,
                             num_workers=num_workers,
                             pin_memory=True,
-                            collate_fn=RADIal_collate)
+                            collate_fn=ImRad_collate)
+ 
+    return train_loader,test_loader
 
-    return train_loader,val_loader,test_loader
+
+# aufruf der Loader-Datei
+
+# In[6]:
+
+
+#train_loader, test_loader = CreateDataLoaders(df)
+
+
+# In[ ]:
+
+
+
+

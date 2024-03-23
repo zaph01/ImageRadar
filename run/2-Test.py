@@ -16,7 +16,7 @@ from model.ImRadNet import ImRadNet
 from dataset.dataloader import CreateDataLoaders
 import cv2
 from utils.util import DisplayHMI
-import dataset.dataloader_pcl as data_pcl
+import dataset.dataloader as data_pcl
 
 def main(config, saved_model = 'ImRad.pth'):
     

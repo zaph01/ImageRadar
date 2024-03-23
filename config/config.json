@@ -40,8 +40,14 @@
         },
     "output": {
         "dir": "../"
-        }
-
+        },
+    "train_loader": {
+        "train_num": "2000"
+    },
+    
+    "test_loader": {
+        "test_num": "500"
+    }
     }
     
     

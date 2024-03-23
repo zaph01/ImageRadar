@@ -15,15 +15,17 @@ import numpy as np
 import random
 import argparse
 from torch.utils.tensorboard import SummaryWriter as SW
+from dataset.dataset import RADIal
 from pathlib import Path
 from datetime import datetime
 from torch.optim import lr_scheduler
 from model.ImRadNet import ImRadNet
 from dataset.dataloader import CreateDataLoaders
+from dataset.dataloader import ImRad_PCL
 from loss.loss_function import pixor_loss
-import dataset.dataloader_pcl as data_pcl
+import dataset.dataloader as data_pcl
 
-def main(config, resume):      
+def main(config):      
     #input args: 
         #config = config.json
         #resume = "Speicherstand" des models -> resume training after going into validation-phase
@@ -36,13 +38,13 @@ def main(config, resume):
 
     #protocoll and name the run
     date = datetime.now()
-    run_name = config['name'] + '_' + date.strftime()
+    run_name = config['name'] + '_' + date.strftime(format='str')
     print(run_name)
 
     #create output directory
     #importet from the project FFTRadNet by Valeo #
     #############################################################################################################################
-    output_folder = Path(config['output']['dir'])
+    output_folder = Path("C:/Users/mail/OneDrive/Dokumente/ImRad/output")
     output_folder.mkdir(parents=True, exist_ok=True)
     (output_folder / run_name).mkdir(parents=True, exist_ok=True)
     #############################################################################################################################
@@ -63,12 +65,12 @@ def main(config, resume):
 
     #load dataset
     #########
-    train_loader = data_pcl.train_loader
-    test_loader = data_pcl.test_loader
+    dataset = ImRad_PCL(root_dir = 'C:/Users/mail/OneDrive/Dokumente/ImRad/radar_PCL')
+    #df, box_labels, dataset_RPC = data_pcl.CreateDataset()
     #########   
     ######################
-    #dataset = 
     ######################
+    train_loader,test_loader = data_pcl.CreateDataLoaders(dataset)
     #train_loader, test_loader = CreateDataLoaders(dataset,config['dataloader'],config['seed']
     #create model
     net = ImRadNet()
@@ -103,13 +105,12 @@ def main(config, resume):
 
         print('       ... Start at epoch:',startEpoch)
     '''
-
     for epoch in range(start_epoch,num_epochs):
         net.train()
         running_loss = 0.0  ########################
         print('Epoch #',epoch)
 
-        for i,data in range(train_loader):
+        for data in enumerate(train_loader):
             inputs = data[0].to(device).float()
             label_map = data[1].to(device).float()
             
@@ -176,8 +177,8 @@ def main(config, resume):
 
 if __name__=='__main__':
     # PARSE THE ARGS
-    parser = argparse.ArgumentParser(description='FFTRadNet Training')
-    parser.add_argument('-c', '--config', default='config.json',type=str,
+    parser = argparse.ArgumentParser(description='ImRadNet Training')
+    parser.add_argument('-c', '--config', default='config/config.json',type=str,
                         help='Path to the config file (default: config.json)')
     parser.add_argument('-r', '--resume', default=None, type=str,
                         help='Path to the .pth model checkpoint to resume training')
@@ -186,4 +187,4 @@ if __name__=='__main__':
 
     config = json.load(open(args.config))
     
-    main(config, args.resume)
+    main(config)
