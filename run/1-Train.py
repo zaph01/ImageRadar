@@ -8,7 +8,7 @@ import torch.nn as nn
 import torch.nn.functional as f
 import json
 import torch.optim as optim
-from loss import pixor_loss
+from loss.loss_function import pixor_loss
 import numpy as np
 import random
 import argparse

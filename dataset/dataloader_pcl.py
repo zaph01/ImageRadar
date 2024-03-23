@@ -21,7 +21,7 @@ from torchvision.transforms import Resize,CenterCrop
 # In[3]:
 
 
-base_dir = 'E:\\Jakob\\Entwicklungsprojekt\\ungezippt\\RADIal-001\\RADIal'
+base_dir = 'C:/Users/mail/OneDrive/Dokumente/ImRad/radar_PCL'
 labels = pd.read_csv(os.path.join(base_dir,'labels.csv'))
 labels_np = labels.to_numpy()
 
