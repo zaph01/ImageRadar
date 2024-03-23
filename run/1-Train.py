@@ -1,3 +1,8 @@
+############################### IMPORTANT INFORMATION ###################################
+# This code contains functions from RADIal-Repository by Valeo.ai                       #  
+# For further information go visit https://github.com/valeoai/RADIal?tab=readme-ov-file #
+#########################################################################################
+
 import torch
 import torch.nn as nn
 import torch.nn.functional as f
@@ -67,19 +72,20 @@ def main(config, resume):
     net.to(device)
 
     # Optimizer
-    lr = float(config['optimizer']['lr'])
-    step_size = int(config['learning_rate']['step_size'])
-    gamma = float(config['learning_rate']['gamma'])
+    lr = float(config['optimizer']['lr'])                           # define initial learning rate of first iteration
+    step_size = int(config['learning_rate']['step_size'])           # defines how many epochs should be run without changing the learning rate
+    gamma = float(config['learning_rate']['gamma'])                 # after the number of epochs defined in step_size, the learning rate is multiplied (in this case reduced) with the factor gamma
     optimizer = optim.Adam(filter(lambda p: p.requires_grad, net.parameters()), lr=lr)
     scheduler = lr_scheduler.StepLR(optimizer, step_size=step_size, gamma=gamma)
 
-    num_epochs=int(config['num_epochs'])
+    num_epochs=int(config['num_epochs'])    # number of total epochs defined in config
 
     # Start Training
     start_epoch = 0
     
     freespace_loss = nn.BCEWithLogitsLoss(reduction='mean')     ########################   
-
+    
+    '''
     if resume:
         print('===========  Resume training  ==================:')
         dict = torch.load(resume)
@@ -91,6 +97,7 @@ def main(config, resume):
         global_step = dict['global_step']
 
         print('       ... Start at epoch:',startEpoch)
+    '''
 
     for epoch in range(start_epoch,num_epochs):
         net.train()
@@ -145,15 +152,13 @@ def main(config, resume):
 
         scheduler.step()
 
-
+        '''
         history['train_loss'].append(running_loss / len(train_loader.dataset))
         history['lr'].append(scheduler.get_last_lr()[0])
-        
+        '''
         ###################################################
-        ## validation phase was cut out due to simplicity##
-        ###################################################
-
-          
+        # validation phase was cut out due to simplicity  #
+        ###################################################  
 
         torch.save({
             'model_state_dict':net.state_dict(),

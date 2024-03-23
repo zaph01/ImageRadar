@@ -34,11 +34,13 @@ def main(config, saved_model = 'ImRad.pth'):
     test_loader = 0
     #########   
     ######################
+    ''''
     dataset = RADIal(root_dir = config['dataset']['root_dir'],
                         statistics= config['dataset']['statistics'],
                         encoder=enc.encode,
                         difficult=True)
     ######################
+    '''
     #train_loader, test_loader = CreateDataLoaders(dataset,config['dataloader'],config['seed']
      
     #create model
