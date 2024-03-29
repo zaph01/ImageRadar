@@ -1,10 +1,12 @@
+import sys
+sys.path.append('C:/Users/malwi/ImageRadar/Git')
 import os
 import torch
 import torch.nn as nn
 import torch.nn.functional as f
 import json
 import torch.optim as optim
-from loss import pixor_loss
+from loss.loss_function import pixor_loss
 import numpy as np
 import random
 import argparse
@@ -15,8 +17,9 @@ from torch.optim import lr_scheduler
 from model.ImRadNet import ImRadNet
 from dataset.dataloader import CreateDataLoaders
 import cv2
-from utils.util import DisplayHMI
+##from utils.util import DisplayHMI
 import dataset.dataloader as data_pcl
+from dataset.dataloader import ImRad_PCL
 
 def main(config, saved_model = 'ImRad.pth'):
     
@@ -32,7 +35,8 @@ def main(config, saved_model = 'ImRad.pth'):
 
     #load dataset
     #########
-    test_loader = data_pcl.test_loader
+    dataset = ImRad_PCL(root_dir = 'C:/Users/malwi/ImageRadar/Git/radar_PCL')
+    train_loader,test_loader = data_pcl.CreateDataLoaders(dataset)
     #########   
     ######################
     ''''
@@ -58,19 +62,25 @@ def main(config, saved_model = 'ImRad.pth'):
     net.eval()
 
     # start testing-loop
-    for data in test_loader:
+    for i,data in enumerate(zip(test_loader.dataset.indices,test_loader.dataset.dataset)):
     # data is composed of [radar_FFT, segmap,out_label,box_labels,image]
-        inputs = torch.tensor(data[0]).permute(2,0,1).to('cuda').float().unsqueeze(0)
+        inputs = torch.Tensor([data[1]]).to(device).float()
 
         with torch.set_grad_enabled(False):
             outputs = net(inputs)
+        # fd = "C:/Users/malwi/ImageRadar/Git/output"
+        # save = open(fd,"w")
+        # save.write(outputs)
+        
+        ## hmi = DisplayHMI(data[4], data[0],outputs,enc)
 
-        hmi = DisplayHMI(data[4], data[0],outputs,enc)
-
-        cv2.imshow('FFTRadNet',hmi)
+        ##cv2.imshow('ImRadNet')
         
         # Press Q on keyboard to  exit
-        if cv2.waitKey(25) & 0xFF == ord('q'):
-            break
-
-cv2.destroyAllWindows()
+        ##if cv2.waitKey(25) & 0xFF == ord('q'):
+          ##  break
+    ##save.close         
+##cv2.destroyAllWindows()
+if __name__=='__main__':   
+    config = json.load(open("C:/Users/malwi/ImageRadar/Git/config/config.json"))
+    main(config)

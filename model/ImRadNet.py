@@ -57,18 +57,22 @@ class ImRadNet(nn.Module):
     def __init__(self,kernel_size = 3, stride = 1, padding = 1, padding_mode = 'zeros', bias = False):
         super(ImRadNet, self).__init__()
 
-        self.conv1 = nn.Conv2d(in_channels=3, out_channels=16, kernel_size=kernel_size, stride=stride, padding=padding, bias=bias,padding_mode=padding_mode)
-        self.conv2 = nn.Conv2d(in_channels=16, out_channels=32, kernel_size=kernel_size, stride=stride, padding=padding, bias=bias,padding_mode=padding_mode)
-        self.fc1 = nn.Linear(32*1028,1028)
-        self.fc2 = nn.Linear(128,3)
+        self.conv1 = nn.Conv2d(in_channels=1, out_channels=3, kernel_size=kernel_size, stride=stride, padding=padding, bias=bias,padding_mode=padding_mode)
+        self.conv2 = nn.Conv2d(in_channels=3, out_channels=16, kernel_size=kernel_size, stride=stride, padding=padding, bias=bias,padding_mode=padding_mode)
+        self.conv3 = nn.Conv2d(in_channels=16, out_channels=32, kernel_size=kernel_size, stride=stride, padding=padding, bias=bias,padding_mode=padding_mode)
+        self.fc1 = nn.Linear(96,1028)
+        self.fc2 = nn.Linear(1028,128)
+        self.fc3 = nn.Linear(128,3)
 
 
     def forward(self,x): 
         x = torch.relu(self.conv1(x))
         x = torch.relu(self.conv2(x))
-        x = x.view(-1,3*1028)
+        x = torch.relu(self.conv3(x))
+        x = x.view(-1,3*32) 
         x = torch.relu(self.fc1(x))
         x = self.fc2(x)
+        x = self.fc3(x)
         return x
     
     

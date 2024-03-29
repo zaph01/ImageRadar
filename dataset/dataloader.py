@@ -73,7 +73,7 @@ class ImRad_PCL(Dataset):
         self.labels = pd.read_csv(os.path.join(self.root_dir,'labels.csv'))
         self.labels_np = self.labels.to_numpy()
 
-        # um nur einfache Werte difficult = 1 anzuzeigen
+        # um nur einfache Werte difficult = 0 anzuzeigen
         ids_filters=[]
         ids = np.where(self.labels_np[:, -1] == 0)[0]
         ids_filters.append(ids)
@@ -141,24 +141,25 @@ def CreateDataLoaders(dataset,batch_size=4,shuffle=True,num_workers=2,seed=3):  
     
     #dataset = ImRad_PCL(root_dir='C:/Users/mail/OneDrive/Dokumente/ImRad/radar_PCL')       # num_workers -> Anzahl Prozesse, die zum Laden der Daten verwendet werden (Ladegescheindigkeit kann erhöht werden)
     data = []
-    box_labels = []
+    box_labels_append = []
     for i in range(dataset.__len__()):
-        data,box_labels = dataset.__getitem__(i)  
+        data = dataset.__getitem__(i)[0]
+        box_labels_append.append(dataset.__getitem__(i)[1]) 
                                                                       # seed -> wichtig für Reproduzierbarkeit der Ergebnisse                                                               # shuffle -> zum Durchmische des datasets
-    print(type(box_labels))
+    print(type(box_labels_append))
     #dict_index_to_keys = {s:i for i,s in enumerate(sample_keys)}    # jedem dataset.sample_kexs wird ein index zugeordnet 
-    
+
     Test_indexes = []                                 # Daten werden aufgeteilt 
     for i in range(500):                              # durchlaufen der Daten 
-        Test_indexes.append(box_labels[i])            # index der Sequenz wird gefunden und Liste hinzugefügt 
-   
+        Test_indexes.append(box_labels_append[i])            # index der Sequenz wird gefunden und Liste hinzugefügt 
+
     Train_indexes = []
     for i in range(500, 2500):
-        Train_indexes.append(box_labels[i])
+        Train_indexes.append(box_labels_append[i])
 
                                                                                          # gibt die werte von array 1 an, die nicht in array 2 vorkommen 
-    train_dataset = Subset(dataset,Train_indexes)                  
-    test_dataset = Subset(dataset,Test_indexes)
+    train_dataset = Subset(data,Train_indexes)                  
+    test_dataset = Subset(data,Test_indexes)
 
     # Erstellen der data_loaders (um die Daten in Batches zu laden, zu mischen und zu transformieren, bevor sie in das Modell eingespeist werden)
     train_loader = DataLoader(train_dataset, 

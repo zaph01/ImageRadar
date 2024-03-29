@@ -6,7 +6,7 @@
     },
     
     "dataset": {
-        "root_dir" : "D:/ImageRadar/RADIal/radar_PCL"
+        "root_dir" : "D:/RADIal/RADIal/RADIal/radar_PCL"
     },
 
     "learning_rate":{
@@ -16,7 +16,7 @@
     "losses": {
         "fct":"PixorLoss",
         "classification": "FocalLoss",
-        "regression": "smoothL1Loss",
+        "regression": "SmoothL1Loss",
         "weight": [1,100,100]
         
     },
@@ -24,7 +24,7 @@
         "lr": 0.0001
     },
 
-    "num_epochs": 10,
+    "num_epochs": 100,
 
     "dataloader": {
         "train_set":{

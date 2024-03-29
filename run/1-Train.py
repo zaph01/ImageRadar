@@ -4,7 +4,8 @@
 #########################################################################################
 import os
 import sys
-sys.path.append('C:/Users/mail/OneDrive/Dokumente/ImRad')
+## sys.path.append('C:/Users/mail/OneDrive/Dokumente/ImRad')
+sys.path.append('C:/Users/malwi/ImageRadar/Git')
 
 import torch
 import torch.nn as nn
@@ -44,7 +45,8 @@ def main(config):
     #create output directory
     #importet from the project FFTRadNet by Valeo #
     #############################################################################################################################
-    output_folder = Path("C:/Users/mail/OneDrive/Dokumente/ImRad/output")
+    ##output_folder = Path("C:/Users/mail/OneDrive/Dokumente/ImRad/output")
+    output_folder = Path("C:/Users/malwi/ImageRadar/Git/output")
     output_folder.mkdir(parents=True, exist_ok=True)
     (output_folder / run_name).mkdir(parents=True, exist_ok=True)
     #############################################################################################################################
@@ -60,12 +62,13 @@ def main(config):
     device = get_device()
 
 
-    # Initiate Tensorboad for visualization of processes 
+    # Initiate Tensorboard for visualization of processes 
     #log_write = SW(output_folder)
 
     #load dataset
     #########
-    dataset = ImRad_PCL(root_dir = 'C:/Users/mail/OneDrive/Dokumente/ImRad/radar_PCL')
+    ## dataset = ImRad_PCL(root_dir = 'C:/Users/mail/OneDrive/Dokumente/ImRad/radar_PCL')
+    dataset = ImRad_PCL(root_dir = 'C:/Users/malwi/ImageRadar/Git/radar_PCL')
     #df, box_labels, dataset_RPC = data_pcl.CreateDataset()
     #########   
     ######################
@@ -89,6 +92,7 @@ def main(config):
 
     # Start Training
     start_epoch = 0
+    global_step = 0
     
     freespace_loss = nn.BCEWithLogitsLoss(reduction='mean')     ########################   
     
@@ -110,24 +114,34 @@ def main(config):
         running_loss = 0.0  ########################
         print('Epoch #',epoch)
 
-        for data in enumerate(train_loader):
-            inputs = data[0].to(device).float()
-            label_map = data[1].to(device).float()
-            
-            if(config['model']['SegmentationHead']=='True'):
-                seg_map_label = data[2].to(device).double()
+        ## for data in enumerate(train_loader.dataset.indices):
+            ## print(data[0]) ## indice
+            ## print(data[1]) ## data
 
+        for i,data in enumerate(zip(train_loader.dataset.indices,train_loader.dataset.dataset)):
+            inputs = torch.Tensor([data[1]]).to(device).float()
+            label_map = torch.Tensor(data[0]).to(device).float()
+
+            if 'model' in config:
+                if 'SegmentationHead' in config['model']:
+                    seg_map_label = torch.Tensor(data[2]).to(device).double()
+            else:
+                seg_map_label = torch.Tensor(data[1]).to(device).double()
+            '''
+            if(config['model']['SegmentationHead']=='True'):
+               seg_map_label = data[2].to(device).double()
+            '''
             # reset the gradient
             optimizer.zero_grad()
-            
+                        
             # forward pass, enable to track our gradient
             with torch.set_grad_enabled(True):
                 outputs = net(inputs)
-
+            
             # calculate losses
-            classif_loss, reg_loss = pixor_loss(outputs['Detection'], label_map,config['losses'])           
+            classif_loss, reg_loss = pixor_loss(outputs, label_map,config['losses'])           
                
-            prediction = outputs['Segmentation'].contiguous().flatten()
+            prediction = outputs.contiguous().flatten()
             label = seg_map_label.contiguous().flatten()        
             loss_seg = freespace_loss(prediction, label)
             loss_seg *= inputs.size(0)
@@ -166,20 +180,21 @@ def main(config):
         # validation phase was cut out due to simplicity  #
         ###################################################  
 
-        torch.save({
-            'model_state_dict':net.state_dict(),
-            'optimizer_state_dict':optimizer.state_dict(),
-            
-        },'ImRad.pth')
-        print('')
-
+    torch.save({
+        'model_state_dict':net.state_dict(),
+        'optimizer_state_dict':optimizer.state_dict(),
+        
+    },'ImRad.pth')
+    print('')
 
 
 if __name__=='__main__':
     # PARSE THE ARGS
     parser = argparse.ArgumentParser(description='ImRadNet Training')
-    parser.add_argument('-c', '--config', default='config/config.json',type=str,
-                        help='Path to the config file (default: config.json)')
+    ## parser.add_argument('-c', '--config', default='config/config.json',type=str,
+    ##                    help='Path to the config file (default: config.json)')
+    parser.add_argument('-c', '--config', default='C:/Users/malwi/ImageRadar/Git/config/config.json',type=str,
+                    help='Path to the config file (default: config.json)')
     parser.add_argument('-r', '--resume', default=None, type=str,
                         help='Path to the .pth model checkpoint to resume training')
 
