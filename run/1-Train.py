@@ -16,13 +16,12 @@ import numpy as np
 import random
 import argparse
 from torch.utils.tensorboard import SummaryWriter as SW
-from dataset.dataset import RADIal
+from dataset.dataloader import ImRad_PCL
 from pathlib import Path
 from datetime import datetime
 from torch.optim import lr_scheduler
 from model.ImRadNet import ImRadNet
 from dataset.dataloader import CreateDataLoaders
-from dataset.dataloader import ImRad_PCL
 from loss.loss_function import pixor_loss
 import dataset.dataloader as data_pcl
 
@@ -120,7 +119,7 @@ def main(config):
 
         for i,data in enumerate(zip(train_loader.dataset.indices,train_loader.dataset.dataset)):
             inputs = torch.Tensor([data[1]]).to(device).float()
-            label_map = torch.Tensor(data[0]).to(device).float()
+            #label_map = torch.Tensor(data[0]).to(device).float()
 
             if 'model' in config:
                 if 'SegmentationHead' in config['model']:
@@ -139,20 +138,23 @@ def main(config):
                 outputs = net(inputs)
             
             # calculate losses
-            classif_loss, reg_loss = pixor_loss(outputs, label_map,config['losses'])           
+            #classif_loss, reg_loss = pixor_loss(outputs, label_map,config['losses'])           
                
             prediction = outputs.contiguous().flatten()
             label = seg_map_label.contiguous().flatten()        
             loss_seg = freespace_loss(prediction, label)
             loss_seg *= inputs.size(0)
 
-            classif_loss *= config['losses']['weight'][0]
-            reg_loss *= config['losses']['weight'][1]
+            #classif_loss *= config['losses']['weight'][0]
+            #reg_loss *= config['losses']['weight'][1]
             loss_seg *=config['losses']['weight'][2]
 
             ## calculate total loss
-            loss = classif_loss + reg_loss + loss_seg
-
+            loss =  loss_seg ## +classif_loss +reg_loss
+            #print(classif_loss)
+            #print(reg_loss)
+            print(loss_seg)
+            #print(loss)
             '''
             writer.add_scalar('Loss/train', loss.item(), global_step)
             writer.add_scalar('Loss/train_clc', classif_loss.item(), global_step)

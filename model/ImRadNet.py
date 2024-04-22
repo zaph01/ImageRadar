@@ -71,7 +71,7 @@ class ImRadNet(nn.Module):
         x = torch.relu(self.conv3(x))
         x = x.view(-1,3*32) 
         x = torch.relu(self.fc1(x))
-        x = self.fc2(x)
+        x = torch.relu(self.fc2(x))
         x = self.fc3(x)
         return x
     

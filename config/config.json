@@ -42,7 +42,7 @@
         "dir": "../"
         },
     "train_loader": {
-        "train_num": "2000"
+        "train_num": "2500"
     },
     
     "test_loader": {

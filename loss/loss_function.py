@@ -55,7 +55,7 @@ def pixor_loss(batch_predictions, batch_labels,param):
     #  Regression loss  #
     #####################
 
-    regression_prediction = batch_predictions##.permute([0, 2, 3, 1])[:, :, :, :-1]
+    regression_prediction = batch_predictions.permute([0, 2, 3, 1])[:, :, :, :-1]
     regression_prediction = regression_prediction.contiguous().view([regression_prediction.size(0)
                         , regression_prediction.size(1)])
     regression_label = batch_labels##.permute([0, 2, 3, 1])[:, :, :, :-1]
@@ -69,11 +69,12 @@ def pixor_loss(batch_predictions, batch_labels,param):
 
     T = batch_labels[:,1:3]
     P = batch_predictions[:,1:]
-    M = batch_labels[:,0].unsqueeze(1)
+    #P = torch.transpose(P,2,1)
+    M = batch_labels[:,:].unsqueeze(1)
 
-    # print(T.size(), T.ndim)
-    # print(P.size(), P.ndim)
-    # print(M.size(), M.ndim)
+    print("T",T.size(), T.ndim)
+    print("P",P.size(), P.ndim)
+    print("M",M.size(), M.ndim)
 
     if(param['regression']=='SmoothL1Loss'):
         reg_loss_fct = nn.SmoothL1Loss(reduction='sum')

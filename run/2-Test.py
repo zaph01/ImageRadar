@@ -61,25 +61,40 @@ def main(config, saved_model = 'ImRad.pth'):
     # set net to evaluation-mode
     net.eval()
 
+    # Optimizer
+    lr = float(config['optimizer']['lr'])                           # define initial learning rate of first iteration
+    step_size = int(config['learning_rate']['step_size'])           # defines how many epochs should be run without changing the learning rate
+    gamma = float(config['learning_rate']['gamma'])                 # after the number of epochs defined in step_size, the learning rate is multiplied (in this case reduced) with the factor gamma
+    optimizer = optim.Adam(filter(lambda p: p.requires_grad, net.parameters()), lr=lr)
+    scheduler = lr_scheduler.StepLR(optimizer, step_size=step_size, gamma=gamma)
+    freespace_loss = nn.BCEWithLogitsLoss(reduction='mean') 
+
     # start testing-loop
     for i,data in enumerate(zip(test_loader.dataset.indices,test_loader.dataset.dataset)):
-    # data is composed of [radar_FFT, segmap,out_label,box_labels,image]
+     #data is composed of [radar_FFT, segmap,out_label,box_labels,image]
         inputs = torch.Tensor([data[1]]).to(device).float()
-
+        running_loss = 0.0     
         with torch.set_grad_enabled(False):
             outputs = net(inputs)
         # fd = "C:/Users/malwi/ImageRadar/Git/output"
         # save = open(fd,"w")
         # save.write(outputs)
-        
-        ## hmi = DisplayHMI(data[4], data[0],outputs,enc)
+        if 'model' in config:
+            if 'SegmentationHead' in config['model']:
+                seg_map_label = torch.Tensor(data[2]).to(device).double()
+        else:
+            seg_map_label = torch.Tensor(data[1]).to(device).double()
 
-        ##cv2.imshow('ImRadNet')
+        prediction = outputs.contiguous().flatten()
+        label = seg_map_label.contiguous().flatten()        
+        loss_seg = freespace_loss(prediction, label)
+        loss_seg *= inputs.size(0)
         
-        # Press Q on keyboard to  exit
-        ##if cv2.waitKey(25) & 0xFF == ord('q'):
-          ##  break
-    ##save.close         
+        print(loss_seg)
+
+        #scheduler.step()
+        # losses 
+        
 ##cv2.destroyAllWindows()
 if __name__=='__main__':   
     config = json.load(open("C:/Users/malwi/ImageRadar/Git/config/config.json"))
