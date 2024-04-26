@@ -21,7 +21,7 @@ class FocalLoss(nn.Module):
     def forward(self, prediction, target):
 
         # get class probability
-        pt = torch.where(target == 1.0, prediction[0], prediction[0])
+        pt = torch.where(target == 1.0, prediction, 1-prediction)
 
         # compute focal loss
         loss = -1 * (1-pt)**self.gamma * torch.log(pt+1e-6)
@@ -41,8 +41,8 @@ def pixor_loss(batch_predictions, batch_labels,param):
     #########################
     #  classification loss  #
     #########################
-    classification_prediction = batch_predictions[:, :].contiguous().flatten()
-    classification_label = batch_labels[:].contiguous().flatten()
+    classification_prediction = batch_predictions[:, 0,:, :].contiguous().flatten()
+    classification_label = batch_labels[:, 0,:, :].contiguous().flatten()
 
     if(param['classification']=='FocalLoss'):
         focal_loss = FocalLoss(gamma=2)
@@ -56,25 +56,20 @@ def pixor_loss(batch_predictions, batch_labels,param):
     #####################
 
     regression_prediction = batch_predictions.permute([0, 2, 3, 1])[:, :, :, :-1]
-    regression_prediction = regression_prediction.contiguous().view([regression_prediction.size(0)
-                        , regression_prediction.size(1)])
-    regression_label = batch_labels##.permute([0, 2, 3, 1])[:, :, :, :-1]
-    ##regression_label = regression_label.contiguous().view([regression_label.size(0)*regression_label.size(1)*
-    ##                                                       regression_label.size(2), regression_label.size(3)])
+    regression_prediction = regression_prediction.contiguous().view([regression_prediction.size(0)*
+                        regression_prediction.size(1)*regression_prediction.size(2), regression_prediction.size(3)])
+    regression_label = batch_labels.permute([0, 2, 3, 1])[:, :, :, :-1]
+    regression_label = regression_label.contiguous().view([regression_label.size(0)*regression_label.size(1)*
+                                                           regression_label.size(2), regression_label.size(3)])
 
     positive_mask = torch.nonzero(torch.sum(torch.abs(regression_label), dim=1))
-    pos_regression_label = regression_label[positive_mask.squeeze(),:]
-    ##pos_regression_prediction = regression_prediction[positive_mask.squeeze()]
+    pos_regression_label = regression_label[positive_mask.squeeze(), :]
+    pos_regression_prediction = regression_prediction[positive_mask.squeeze(), :]
 
 
-    T = batch_labels[:,1:3]
+    T = batch_labels[:,1:]
     P = batch_predictions[:,1:]
-    #P = torch.transpose(P,2,1)
-    M = batch_labels[:,:].unsqueeze(1)
-
-    print("T",T.size(), T.ndim)
-    print("P",P.size(), P.ndim)
-    print("M",M.size(), M.ndim)
+    M = batch_labels[:,0].unsqueeze(1)
 
     if(param['regression']=='SmoothL1Loss'):
         reg_loss_fct = nn.SmoothL1Loss(reduction='sum')

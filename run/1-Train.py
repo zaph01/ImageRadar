@@ -5,7 +5,7 @@
 import os
 import sys
 ## sys.path.append('C:/Users/mail/OneDrive/Dokumente/ImRad')
-sys.path.append('C:/Users/malwi/ImageRadar/Git')
+sys.path.append("C:/Users/malwi/GIT")
 
 import torch
 import torch.nn as nn
@@ -16,12 +16,12 @@ import numpy as np
 import random
 import argparse
 from torch.utils.tensorboard import SummaryWriter as SW
-from dataset.dataloader import ImRad_PCL
 from pathlib import Path
 from datetime import datetime
 from torch.optim import lr_scheduler
 from model.ImRadNet import ImRadNet
 from dataset.dataloader import CreateDataLoaders
+from dataset.dataloader import ImRad_PCL
 from loss.loss_function import pixor_loss
 import dataset.dataloader as data_pcl
 
@@ -45,7 +45,7 @@ def main(config):
     #importet from the project FFTRadNet by Valeo #
     #############################################################################################################################
     ##output_folder = Path("C:/Users/mail/OneDrive/Dokumente/ImRad/output")
-    output_folder = Path("C:/Users/malwi/ImageRadar/Git/output")
+    output_folder = Path("C:/Users/malwi/GIT/output")
     output_folder.mkdir(parents=True, exist_ok=True)
     (output_folder / run_name).mkdir(parents=True, exist_ok=True)
     #############################################################################################################################
@@ -67,7 +67,7 @@ def main(config):
     #load dataset
     #########
     ## dataset = ImRad_PCL(root_dir = 'C:/Users/mail/OneDrive/Dokumente/ImRad/radar_PCL')
-    dataset = ImRad_PCL(root_dir = 'C:/Users/malwi/ImageRadar/Git/radar_PCL')
+    dataset = ImRad_PCL(root_dir = 'C:/Users/malwi/GIT/radar_PCL')
     #df, box_labels, dataset_RPC = data_pcl.CreateDataset()
     #########   
     ######################
@@ -93,8 +93,9 @@ def main(config):
     start_epoch = 0
     global_step = 0
     
-    freespace_loss = nn.BCEWithLogitsLoss(reduction='mean')     ########################   
-    
+    #freespace_loss = nn.BCEWithLogitsLoss(reduction='mean')     ########################   
+    freespace_loss = nn.MSELoss(reduction='mean')
+
     '''
     if resume:
         print('===========  Resume training  ==================:')
@@ -113,63 +114,68 @@ def main(config):
         running_loss = 0.0  ########################
         print('Epoch #',epoch)
 
-        ## for data in enumerate(train_loader.dataset.indices):
-            ## print(data[0]) ## indice
-            ## print(data[1]) ## data
 
-        for i,data in enumerate(zip(train_loader.dataset.indices,train_loader.dataset.dataset)):
-            inputs = torch.Tensor([data[1]]).to(device).float()
-            #label_map = torch.Tensor(data[0]).to(device).float()
+        for i,data in enumerate(train_loader.dataset.dataset):
+            for j,labels in enumerate(train_loader.dataset.indices):
+                inputs = torch.Tensor([data[0]]).to(device).float()
+                #label_map = torch.Tensor(data[0]).to(device).float()
+                # if 'model' in config:
+                #     if 'SegmentationHead' in config['model']:
+                #         seg_map_label = torch.Tensor(data[2]).to(device).double()
+                # else:
+                seg_map_label = torch.Tensor(labels[0]).to(device).double()
+                '''
+                if(config['model']['SegmentationHead']=='True'):
+                seg_map_label = data[2].to(device).double()
+                '''
+                # reset the gradient
+                optimizer.zero_grad()
+                            
+                # forward pass, enable to track our gradient
+                with torch.set_grad_enabled(True):
+                    outputs = net(inputs)
+                
+                                
+                prediction = outputs.contiguous().flatten()
+                label = seg_map_label.contiguous().flatten()  
+                loss = freespace_loss(prediction[0:3],label)
+                loss *= inputs.size(0)
 
-            if 'model' in config:
-                if 'SegmentationHead' in config['model']:
-                    seg_map_label = torch.Tensor(data[2]).to(device).double()
-            else:
-                seg_map_label = torch.Tensor(data[1]).to(device).double()
-            '''
-            if(config['model']['SegmentationHead']=='True'):
-               seg_map_label = data[2].to(device).double()
-            '''
-            # reset the gradient
-            optimizer.zero_grad()
-                        
-            # forward pass, enable to track our gradient
-            with torch.set_grad_enabled(True):
-                outputs = net(inputs)
-            
-            # calculate losses
-            #classif_loss, reg_loss = pixor_loss(outputs, label_map,config['losses'])           
-               
-            prediction = outputs.contiguous().flatten()
-            label = seg_map_label.contiguous().flatten()        
-            loss_seg = freespace_loss(prediction, label)
-            loss_seg *= inputs.size(0)
+                # calculate losses
+                #classif_loss, reg_loss = pixor_loss(outputs, label_map,config['losses'])           
+                
+                # prediction = outputs.contiguous().flatten()
+                # label = seg_map_label.contiguous().flatten()        
+                # loss_seg = freespace_loss(prediction, label)
+                # loss_seg *= inputs.size(0)
 
-            #classif_loss *= config['losses']['weight'][0]
-            #reg_loss *= config['losses']['weight'][1]
-            loss_seg *=config['losses']['weight'][2]
 
-            ## calculate total loss
-            loss =  loss_seg ## +classif_loss +reg_loss
-            #print(classif_loss)
-            #print(reg_loss)
-            print(loss_seg)
-            #print(loss)
-            '''
-            writer.add_scalar('Loss/train', loss.item(), global_step)
-            writer.add_scalar('Loss/train_clc', classif_loss.item(), global_step)
-            writer.add_scalar('Loss/train_reg', reg_loss.item(), global_step)
-            writer.add_scalar('Loss/train_freespace', loss_seg.item(), global_step)
-            '''
+                #classif_loss *= config['losses']['weight'][0]
+                #reg_loss *= config['losses']['weight'][1]
+                #loss_seg *=config['losses']['weight'][2]
+                loss *= config['losses']['weight'][2]
 
-            # backpropagation
-            loss.backward()
-            optimizer.step()
+                ## calculate total loss
+                #loss =  loss_seg ## +classif_loss +reg_loss
+                #print(classif_loss)
+                #print(reg_loss)
+                #print(loss_seg)
+                print(loss)
+                '''
+                writer.add_scalar('Loss/train', loss.item(), global_step)
+                writer.add_scalar('Loss/train_clc', classif_loss.item(), global_step)
+                writer.add_scalar('Loss/train_reg', reg_loss.item(), global_step)
+                writer.add_scalar('Loss/train_freespace', loss_seg.item(), global_step)
+                '''
+                
+                # backpropagation
+                loss.backward()
+                optimizer.step()
 
-            # statistics
-            running_loss += loss.item() * inputs.size(0) 
-            
-            global_step += 1
+                # statistics
+                # running_loss += loss.item() * inputs.size(0) 
+                
+                global_step += 1
 
 
         scheduler.step()
@@ -195,7 +201,7 @@ if __name__=='__main__':
     parser = argparse.ArgumentParser(description='ImRadNet Training')
     ## parser.add_argument('-c', '--config', default='config/config.json',type=str,
     ##                    help='Path to the config file (default: config.json)')
-    parser.add_argument('-c', '--config', default='C:/Users/malwi/ImageRadar/Git/config/config.json',type=str,
+    parser.add_argument('-c', '--config', default='C:/Users/malwi/GIT/config/config.json',type=str,
                     help='Path to the config file (default: config.json)')
     parser.add_argument('-r', '--resume', default=None, type=str,
                         help='Path to the .pth model checkpoint to resume training')
