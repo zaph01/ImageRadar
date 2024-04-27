@@ -29,47 +29,45 @@ def conv3x3_RAD(input, output, stride = 1, bias = False):
 
 #Nomalize Input to equal dimensions
  #Dimensions of input: batch_size = 4, Channels = 3,
-'''
-class DataNorm(nn.utils.dataset):
-    def __init__(self,input_data, mode = 'bilinear',size = (1028)):     # Size variabel, 1028 nur als vorläufiger Platzhalter
+
+class DataNorm(nn.Module):
+    def __init__(self, mode = 'bilinear',size = (3,1028)):     # Size variabel, 1028 nur als vorläufiger Platzhalter
         super(DataNorm,self).__init__()
         self.mode = mode
         self.size = size
-        self.input_data = input_data
-        self.input_tensor = torch.Tensor(input_data)     # Tensor in 2D -> Shape of input Array -> 3xY: (Line 1: Range, Line 2: Azimuth, Line 3: Doppler)
+        #self.input_data = input_data
+        #self.input_tensor = torch.Tensor(input_data)     # Tensor in 2D -> Shape of input Array -> 3xY: (Line 1: Range, Line 2: Azimuth, Line 3: Doppler)
 
 
-    def DimNorm(self):    #input dimensions: mini-batch x channels x [optional depth] x [optional height] x width.
+    def forward(self,input_tensor):    #input dimensions: mini-batch x channels x [optional depth] x [optional height] x width.
         #Normalize Data using interpolation
-        tensor_scaled = F.interpolate(input = self.input_tensor, size = self.size, mode = self.mode)    # scaled Tensor: Dimension 2D -> 3 Lines(Order described above), 1028 columns(values interpolated)
-        num_columns = tensor_scaled.size(1)     # extract number of columns -> should be equal to self.size
+        tensor_scaled = F.interpolate(input = input_tensor, size = self.size, mode = self.mode)    # scaled Tensor: Dimension 2D -> 3 Lines(Order described above), 1028 columns(values interpolated)
+        num_columns = tensor_scaled.size(3)     # extract number of columns -> should be equal to self.size
 
-        if self.size != num_columns:
+        if self.size[1] != num_columns:
             print("Error in calculating Tensor Dimensions")
             os.abort
         
         return tensor_scaled
-'''
-
 
 
 class ImRadNet(nn.Module):
     def __init__(self,kernel_size = 3, stride = 1, padding = 1, padding_mode = 'zeros', bias = False):
         super(ImRadNet, self).__init__()
 
-        self.conv1 = nn.Conv2d(in_channels=1, out_channels=3, kernel_size=kernel_size, stride=stride, padding=padding, bias=bias,padding_mode=padding_mode)
-        self.conv2 = nn.Conv2d(in_channels=3, out_channels=16, kernel_size=kernel_size, stride=stride, padding=padding, bias=bias,padding_mode=padding_mode)
-        self.conv3 = nn.Conv2d(in_channels=16, out_channels=32, kernel_size=kernel_size, stride=stride, padding=padding, bias=bias,padding_mode=padding_mode)
+        # self.conv1 = nn.Conv2d(in_channels=1, out_channels=3, kernel_size=kernel_size, stride=stride, padding=padding, bias=bias,padding_mode=padding_mode)
+        # self.conv2 = nn.Conv2d(in_channels=3, out_channels=16, kernel_size=kernel_size, stride=stride, padding=padding, bias=bias,padding_mode=padding_mode)
+        # self.conv3 = nn.Conv2d(in_channels=16, out_channels=32, kernel_size=kernel_size, stride=stride, padding=padding, bias=bias,padding_mode=padding_mode)
         self.fc1 = nn.Linear(96,1028)
         self.fc2 = nn.Linear(1028,128)
         self.fc3 = nn.Linear(128,3)
 
 
     def forward(self,x): 
-        x = torch.relu(self.conv1(x))
-        x = torch.relu(self.conv2(x))
-        x = torch.relu(self.conv3(x))
-        x = x.view(-1,3*32) 
+        # x = torch.relu(self.conv1(x))
+        # x = torch.relu(self.conv2(x))
+        # x = torch.relu(self.conv3(x))
+        # x = x.view(-1,3*32) 
         x = torch.relu(self.fc1(x))
         x = torch.relu(self.fc2(x))
         x = self.fc3(x)
