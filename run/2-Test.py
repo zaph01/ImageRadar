@@ -15,8 +15,7 @@ from pathlib import Path
 from datetime import datetime
 from torch.optim import lr_scheduler
 from model.ImRadNet import ImRadNet
-from dataset.dataloader import CreateDataLoaders
-import cv2
+from dataset.dataloader import CreateDataLoader
 ##from utils.util import DisplayHMI
 import dataset.dataloader as data_pcl
 from dataset.dataloader import ImRad_PCL

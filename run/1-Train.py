@@ -5,7 +5,7 @@
 import os
 import sys
 ## sys.path.append('C:/Users/mail/OneDrive/Dokumente/ImRad')
-sys.path.append("C:/Users/malwi/ImageRadar/GIT")
+sys.path.append("C:/Users/mail\OneDrive - bwedu/Semester 5 (6)/Entwicklungsprojekt/Clone_29_04/ImageRadar")
 
 import torch
 import torch.nn as nn
@@ -25,6 +25,8 @@ from dataset.dataloader import CreateDataLoaders
 from dataset.dataloader import ImRad_PCL
 from loss.loss_function import pixor_loss
 import dataset.dataloader as data_pcl
+
+
 
 def main(config):      
     #input args: 
@@ -46,7 +48,7 @@ def main(config):
     #importet from the project FFTRadNet by Valeo #
     #############################################################################################################################
     ##output_folder = Path("C:/Users/mail/OneDrive/Dokumente/ImRad/output")
-    output_folder = Path("C:/Users/malwi/ImageRadar/GIT/output")
+    output_folder = Path("C:/Users/mail/OneDrive - bwedu/Semester 5 (6)/Entwicklungsprojekt/Clone_29_04/ImageRadar/output")
     output_folder.mkdir(parents=True, exist_ok=True)
     (output_folder / run_name).mkdir(parents=True, exist_ok=True)
     #############################################################################################################################
@@ -68,7 +70,7 @@ def main(config):
     #load dataset
     #########
     ## dataset = ImRad_PCL(root_dir = 'C:/Users/mail/OneDrive/Dokumente/ImRad/radar_PCL')
-    dataset = ImRad_PCL(root_dir = 'C:/Users/malwi/ImageRadar/GIT/radar_PCL')
+    dataset = ImRad_PCL(root_dir = 'C:/Users/mail/OneDrive - bwedu/Semester 5 (6)/Entwicklungsprojekt/Clone_29_04/ImageRadar/radar_PCL')
     #df, box_labels, dataset_RPC = data_pcl.CreateDataset()
     #########   
     ######################
@@ -94,10 +96,9 @@ def main(config):
 
     # Start Training
     start_epoch = 0
-    global_step = 0
-    
+    counter = 0
     #freespace_loss = nn.BCEWithLogitsLoss(reduction='mean')     ########################   
-    freespace_loss = nn.MSELoss()
+    freespace_loss = nn.L1Loss()
 
     '''
     if resume:
@@ -161,12 +162,6 @@ def main(config):
             #print(reg_loss)
             #print(loss_seg)
             #print(loss)
-            '''
-            writer.add_scalar('Loss/train', loss.item(), global_step)
-            writer.add_scalar('Loss/train_clc', classif_loss.item(), global_step)
-            writer.add_scalar('Loss/train_reg', reg_loss.item(), global_step)
-            writer.add_scalar('Loss/train_freespace', loss_seg.item(), global_step)
-            '''
             
             # backpropagation
             loss.backward()
@@ -174,12 +169,11 @@ def main(config):
 
             # statistics
             # running_loss += loss.item() * inputs.size(0) 
-            
-            global_step += 1
 
             loss_summed += loss
-
+            counter += 1
         print(loss_summed/2500)
+        print("counter: ", counter)
 
         scheduler.step()
 
@@ -204,7 +198,7 @@ if __name__=='__main__':
     parser = argparse.ArgumentParser(description='ImRadNet Training')
     ## parser.add_argument('-c', '--config', default='config/config.json',type=str,
     ##                    help='Path to the config file (default: config.json)')
-    parser.add_argument('-c', '--config', default='C:/Users/malwi/ImageRadar/GIT/config/config.json',type=str,
+    parser.add_argument('-c', '--config', default='C:/Users/mail/OneDrive - bwedu/Semester 5 (6)/Entwicklungsprojekt/Clone_29_04/ImageRadar/config/config.json',type=str,
                     help='Path to the config file (default: config.json)')
     parser.add_argument('-r', '--resume', default=None, type=str,
                         help='Path to the .pth model checkpoint to resume training')
