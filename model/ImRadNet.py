@@ -58,10 +58,10 @@ class ImRadNet(nn.Module):
         # self.conv1 = nn.Conv2d(in_channels=1, out_channels=3, kernel_size=kernel_size, stride=stride, padding=padding, bias=bias,padding_mode=padding_mode)
         # self.conv2 = nn.Conv2d(in_channels=3, out_channels=16, kernel_size=kernel_size, stride=stride, padding=padding, bias=bias,padding_mode=padding_mode)
         # self.conv3 = nn.Conv2d(in_channels=16, out_channels=32, kernel_size=kernel_size, stride=stride, padding=padding, bias=bias,padding_mode=padding_mode)
-        self.fc1 = nn.Linear(1028,3)
-        self.fc2 = nn.Linear(3,128)
-        self.fc3 = nn.Linear(128,64)
-        self.fc4 = nn.Linear(64,1)
+        self.fc1 = nn.Linear(1028,128)
+        self.fc2 = nn.Linear(128,3)
+        self.fc3 = nn.Linear(3,1)
+
 
 
     def forward(self,x): 
@@ -71,8 +71,7 @@ class ImRadNet(nn.Module):
         # x = x.view(-1,3*32) 
         x = torch.relu(self.fc1(x))
         x = torch.relu(self.fc2(x))
-        x = torch.relu(self.fc3(x))
-        x = self.fc4(x)
+        x = self.fc3(x)
         return x
     
     

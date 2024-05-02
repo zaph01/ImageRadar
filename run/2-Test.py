@@ -1,5 +1,5 @@
 import sys
-sys.path.append('C:/Users/malwi/ImageRadar/Git')
+sys.path.append('C:/Users/malwi/ImageRadar/Clone/ImageRadar')
 import os
 import torch
 import torch.nn as nn
@@ -15,7 +15,9 @@ from pathlib import Path
 from datetime import datetime
 from torch.optim import lr_scheduler
 from model.ImRadNet import ImRadNet
-from dataset.dataloader import CreateDataLoader
+from model.ImRadNet import DataNorm
+from dataset.dataloader import CreateDataLoaders
+import cv2
 ##from utils.util import DisplayHMI
 import dataset.dataloader as data_pcl
 from dataset.dataloader import ImRad_PCL
@@ -34,7 +36,7 @@ def main(config, saved_model = 'ImRad.pth'):
 
     #load dataset
     #########
-    dataset = ImRad_PCL(root_dir = 'C:/Users/malwi/ImageRadar/Git/radar_PCL')
+    dataset = ImRad_PCL(root_dir = 'C:/Users/malwi/ImageRadar/Clone/ImageRadar/radar_PCL')
     train_loader,test_loader = data_pcl.CreateDataLoaders(dataset)
     #########   
     ######################
@@ -50,51 +52,71 @@ def main(config, saved_model = 'ImRad.pth'):
     #create model
     net = ImRadNet()
 
+    Norm_Data = DataNorm()
+
     # move net to device
     net.to(device)
 
     # load the model
     ImRad = torch.load(saved_model)
     net.load_state_dict(ImRad['model_state_dict'])
+    #net.load_state_dict(ImRad['optimizer_state_dict'])
 
     # set net to evaluation-mode
     net.eval()
 
     # Optimizer
-    lr = float(config['optimizer']['lr'])                           # define initial learning rate of first iteration
-    step_size = int(config['learning_rate']['step_size'])           # defines how many epochs should be run without changing the learning rate
-    gamma = float(config['learning_rate']['gamma'])                 # after the number of epochs defined in step_size, the learning rate is multiplied (in this case reduced) with the factor gamma
-    optimizer = optim.Adam(filter(lambda p: p.requires_grad, net.parameters()), lr=lr)
-    scheduler = lr_scheduler.StepLR(optimizer, step_size=step_size, gamma=gamma)
-    freespace_loss = nn.BCEWithLogitsLoss(reduction='mean') 
+    # lr = float(config['optimizer']['lr'])                           # define initial learning rate of first iteration
+    # step_size = int(config['learning_rate']['step_size'])           # defines how many epochs should be run without changing the learning rate
+    # gamma = float(config['learning_rate']['gamma'])                 # after the number of epochs defined in step_size, the learning rate is multiplied (in this case reduced) with the factor gamma
+    # optimizer = optim.Adam(filter(lambda p: p.requires_grad, net.parameters()), lr=lr)
+    # scheduler = lr_scheduler.StepLR(optimizer, step_size=step_size, gamma=gamma)
+    #freespace_loss = nn.BCEWithLogitsLoss(reduction='mean') 
+    freespace_loss = nn.L1Loss()
+
+    loss_summed = 0
 
     # start testing-loop
-    for i,data in enumerate(zip(test_loader.dataset.indices,test_loader.dataset.dataset)):
+    for i,(data,labels) in enumerate(zip(test_loader.dataset.dataset,test_loader.dataset.indices)):
      #data is composed of [radar_FFT, segmap,out_label,box_labels,image]
-        inputs = torch.Tensor([data[1]]).to(device).float()
+        input = torch.Tensor([data[0:3]]).to(device).float()
+        inputs = Norm_Data(input)
         running_loss = 0.0     
         with torch.set_grad_enabled(False):
             outputs = net(inputs)
         # fd = "C:/Users/malwi/ImageRadar/Git/output"
         # save = open(fd,"w")
         # save.write(outputs)
-        if 'model' in config:
-            if 'SegmentationHead' in config['model']:
-                seg_map_label = torch.Tensor(data[2]).to(device).double()
-        else:
-            seg_map_label = torch.Tensor(data[1]).to(device).double()
+        # if 'model' in config:
+        #     if 'SegmentationHead' in config['model']:
+        #         seg_map_label = torch.Tensor(labels[:]).to(device).double()
+        # else:
+        seg_map_label = torch.Tensor(labels[:]).to(device).double()
 
         prediction = outputs.contiguous().flatten()
         label = seg_map_label.contiguous().flatten()        
-        loss_seg = freespace_loss(prediction, label)
-        loss_seg *= inputs.size(0)
-        
-        print(loss_seg)
+        loss = freespace_loss(prediction, label[0:3])
+
+        if len(label) == 6: ## Two labels
+            loss2 = freespace_loss(prediction,label[3:6])
+            loss = min([loss,loss2]) 
+        elif len(label) == 9: ## Three labels
+            loss2 = freespace_loss(prediction,label[3:6])
+            loss3 = freespace_loss(prediction,label[6:9])
+            loss = min([loss,loss2,loss3])
+        elif len(label) == 12: ## Four labels
+            loss2 = freespace_loss(prediction,label[3:6])
+            loss3 = freespace_loss(prediction,label[6:9])
+            loss4 = freespace_loss(prediction,label[9:12])
+            loss = min([loss,loss2,loss3,loss4])
+
+        loss_summed += loss
+    print(loss_summed/500)
 
         #scheduler.step()
         # losses 
         
 ##cv2.destroyAllWindows()
 if __name__=='__main__':   
-    config = json.load(open("C:/Users/malwi/ImageRadar/Git/config/config.json"))
+    config = json.load(open("C:/Users/malwi/ImageRadar/Clone/ImageRadar/config/config.json"))
     main(config)

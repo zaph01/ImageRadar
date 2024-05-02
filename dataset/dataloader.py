@@ -68,7 +68,7 @@ def ImRad_collate(batch):
  
 # Class for loader settings
  
-def CreateDataLoaders(dataset,batch_size=4,shuffle=False,num_workers=2,seed=3):   # batch_size -> Datenloader loads data in batches
+def CreateDataLoaders(dataset,batch_size=4,shuffle=True,num_workers=2,seed=3):   # batch_size -> Datenloader loads data in batches
                                                                                  # num_workers -> Number of processes used to load the data (loading speed can be increased)
     data = []
     box_labels_append = []
@@ -80,21 +80,25 @@ def CreateDataLoaders(dataset,batch_size=4,shuffle=False,num_workers=2,seed=3): 
                                                                       # seed -> Important for reproducibility of results
  
     Test_indexes = []                                                 # seperate data
+    test_data = []
     for i in range(500):                                              # run through data
+        test_data.append(data[i])
         Test_indexes.append(box_labels_append[i])                     # find index and append to list
  
     Train_indexes = []
+    train_data = []    
     for i in range(500, 3000):
+        train_data.append(data[i])
         Train_indexes.append(box_labels_append[i])
  
                                                                                          # specifies the values of array 1 that do not occur in array 2
-    train_dataset = Subset(data,Train_indexes)                  
-    test_dataset = Subset(data,Test_indexes)
+    train_dataset = Subset(train_data,Train_indexes)                  
+    test_dataset = Subset(test_data,Test_indexes)
  
     # Create the data_loaders (to load, merge and transform the data in batches before feeding it into the model)
     train_loader = DataLoader(train_dataset,
                             batch_size=batch_size,
-                            shuffle=False,
+                            shuffle=True,
                             num_workers=num_workers,
                             pin_memory=True,
                             collate_fn=ImRad_collate)
