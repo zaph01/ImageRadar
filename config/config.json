@@ -11,7 +11,7 @@
 
     "learning_rate":{
         "step_size": 1,
-        "gamma": 1
+        "gamma": 0.9
     },
     "losses": {
         "fct":"PixorLoss",

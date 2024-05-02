@@ -5,7 +5,7 @@
 import os
 import sys
 ## sys.path.append('C:/Users/mail/OneDrive/Dokumente/ImRad')
-sys.path.append("C:/Users/mail\OneDrive - bwedu/Semester 5 (6)/Entwicklungsprojekt/Clone_29_04/ImageRadar")
+sys.path.append("C:/Users/malwi/ImageRadar/Clone/ImageRadar")
 
 import torch
 import torch.nn as nn
@@ -15,6 +15,7 @@ import torch.optim as optim
 import numpy as np
 import random
 import argparse
+import matplotlib.pyplot as plt
 from torch.utils.tensorboard import SummaryWriter as SW
 from pathlib import Path
 from datetime import datetime
@@ -25,8 +26,6 @@ from dataset.dataloader import CreateDataLoaders
 from dataset.dataloader import ImRad_PCL
 from loss.loss_function import pixor_loss
 import dataset.dataloader as data_pcl
-
-
 
 def main(config):      
     #input args: 
@@ -48,7 +47,7 @@ def main(config):
     #importet from the project FFTRadNet by Valeo #
     #############################################################################################################################
     ##output_folder = Path("C:/Users/mail/OneDrive/Dokumente/ImRad/output")
-    output_folder = Path("C:/Users/mail/OneDrive - bwedu/Semester 5 (6)/Entwicklungsprojekt/Clone_29_04/ImageRadar/output")
+    output_folder = Path("C:/Users/malwi/ImageRadar/Clone/ImageRadar/output")
     output_folder.mkdir(parents=True, exist_ok=True)
     (output_folder / run_name).mkdir(parents=True, exist_ok=True)
     #############################################################################################################################
@@ -70,7 +69,7 @@ def main(config):
     #load dataset
     #########
     ## dataset = ImRad_PCL(root_dir = 'C:/Users/mail/OneDrive/Dokumente/ImRad/radar_PCL')
-    dataset = ImRad_PCL(root_dir = 'C:/Users/mail/OneDrive - bwedu/Semester 5 (6)/Entwicklungsprojekt/Clone_29_04/ImageRadar/radar_PCL')
+    dataset = ImRad_PCL(root_dir = 'C:/Users/malwi/ImageRadar/Clone/ImageRadar/radar_PCL')
     #df, box_labels, dataset_RPC = data_pcl.CreateDataset()
     #########   
     ######################
@@ -96,10 +95,12 @@ def main(config):
 
     # Start Training
     start_epoch = 0
-    counter = 0
+    global_step = 0
+    
     #freespace_loss = nn.BCEWithLogitsLoss(reduction='mean')     ########################   
     freespace_loss = nn.L1Loss()
 
+    array = []
     '''
     if resume:
         print('===========  Resume training  ==================:')
@@ -116,12 +117,11 @@ def main(config):
     for epoch in range(start_epoch,num_epochs):
         net.train()
         running_loss = 0.0  ########################
-        loss_summed = 0
+        loss_summed = 0.0
         print('Epoch #',epoch)
 
 
-        # for i,data in enumerate(train_loader.dataset.dataset):
-        #     for j,labels in enumerate(train_loader.dataset.indices):
+
         for i,(data,labels) in enumerate(zip(train_loader.dataset.dataset, train_loader.dataset.indices)):
             input = torch.Tensor([data[0:3]]).to(device).float()
             inputs = Norm_Data(input)
@@ -130,7 +130,7 @@ def main(config):
             #     if 'SegmentationHead' in config['model']:
             #         seg_map_label = torch.Tensor(data[2]).to(device).double()
             # else:
-            seg_map_label = torch.Tensor(labels[0]).to(device).float()
+            seg_map_label = torch.Tensor(labels[:]).to(device).float()
             '''
             if(config['model']['SegmentationHead']=='True'):
             seg_map_label = data[2].to(device).double()
@@ -142,10 +142,25 @@ def main(config):
             with torch.set_grad_enabled(True):
                 outputs = net(inputs)
             
-                            
+           
             prediction = outputs.contiguous().flatten()
             label = seg_map_label.contiguous().flatten()  
-            loss = freespace_loss(prediction,label)
+            ## Compare net outputs with first label
+            loss = freespace_loss(prediction,label[0:3])
+            ## Check for lenght of label -> how many labels are there
+            ## Compare the net outputs with all labels for the situation and take the smallest loss (best hit)
+            if len(label) == 6: ## Two labels
+                loss2 = freespace_loss(prediction,label[3:6])
+                loss = min([loss,loss2]) 
+            elif len(label) == 9: ## Three labels
+                loss2 = freespace_loss(prediction,label[3:6])
+                loss3 = freespace_loss(prediction,label[6:9])
+                loss = min([loss,loss2,loss3])
+            elif len(label) == 12: ## Four labels
+                loss2 = freespace_loss(prediction,label[3:6])
+                loss3 = freespace_loss(prediction,label[6:9])
+                loss4 = freespace_loss(prediction,label[9:12])
+                loss = min([loss,loss2,loss3,loss4])
             #loss *= inputs.size(0)
 
             # calculate losses
@@ -154,14 +169,20 @@ def main(config):
             #classif_loss *= config['losses']['weight'][0]
             #reg_loss *= config['losses']['weight'][1]
             #loss_seg *=config['losses']['weight'][2]
-            loss *= config['losses']['weight'][2]
+            #loss *= config['losses']['weight'][2]
 
             ## calculate total loss
             #loss =  loss_seg ## +classif_loss +reg_loss
             #print(classif_loss)
             #print(reg_loss)
             #print(loss_seg)
-            #print(loss)
+
+            '''
+            writer.add_scalar('Loss/train', loss.item(), global_step)
+            writer.add_scalar('Loss/train_clc', classif_loss.item(), global_step)
+            writer.add_scalar('Loss/train_reg', reg_loss.item(), global_step)
+            writer.add_scalar('Loss/train_freespace', loss_seg.item(), global_step)
+            '''
             
             # backpropagation
             loss.backward()
@@ -169,11 +190,13 @@ def main(config):
 
             # statistics
             # running_loss += loss.item() * inputs.size(0) 
+            
+            global_step += 1
 
             loss_summed += loss
-            counter += 1
-        print(loss_summed/2500)
-        print("counter: ", counter)
+
+        print(loss_summed/2500) ## Divide by number train_num
+        array.append((loss_summed/2500).detach().numpy())
 
         scheduler.step()
 
@@ -190,6 +213,15 @@ def main(config):
         'optimizer_state_dict':optimizer.state_dict(),
         
     },'ImRad.pth')
+
+    ## Plot Training Loss Curve
+    plt.figure(1)
+    plt.plot(range(100),array)
+    plt.title('Training Loss Curve')
+    plt.xlabel('Epoch')
+    plt.ylabel('Loss')
+    plt.show()
+
     print('')
 
 
@@ -198,7 +230,7 @@ if __name__=='__main__':
     parser = argparse.ArgumentParser(description='ImRadNet Training')
     ## parser.add_argument('-c', '--config', default='config/config.json',type=str,
     ##                    help='Path to the config file (default: config.json)')
-    parser.add_argument('-c', '--config', default='C:/Users/mail/OneDrive - bwedu/Semester 5 (6)/Entwicklungsprojekt/Clone_29_04/ImageRadar/config/config.json',type=str,
+    parser.add_argument('-c', '--config', default='C:/Users/malwi/ImageRadar/Clone/ImageRadar/config/config.json',type=str,
                     help='Path to the config file (default: config.json)')
     parser.add_argument('-r', '--resume', default=None, type=str,
                         help='Path to the .pth model checkpoint to resume training')
